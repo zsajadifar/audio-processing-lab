@@ -32,7 +32,7 @@ J = size(RIR_sources,3);
 
 % Define the lengths of RIRs and g filters
 Lh = 400; % Length of impulse responses of listeniLg room
-Lg = 266;      % Length of filters g_j
+Lg = 1;      % Length of filters g_j
 
 % Truncate impulse response to reduce computational complexity
 RIR_sources = RIR_sources(1:Lh,:,:);
@@ -44,9 +44,9 @@ Delta=ceil(sqrt(room_dim(1)^2 + room_dim(2)^2)*fs_RIR/340);
 HL=[];
 HR=[];
 for j = 1:J
-    HL_ = toeplitz([RIR_sources(:,1,j);zeros(Lg-1,1)],zeros(Lg,1));
+    HL_ = toeplitz(RIR_sources(:,1,j);zeros(Lg),zeros(Lg,1));
     HL = [HL HL_];
-    HR_ = toeplitz([RIR_sources(:,2,j);zeros(Lg-1,1)],zeros(Lg,1));
+    HR_ = toeplitz(RIR_sources(:,2,j),zeros(Lg,1));
     HR = [HR HR_];
 end
 
@@ -57,8 +57,8 @@ xR = HRTF(:,2); % Right ear
 
 % Construct H (from HL and HR) and x (from xL and xR) and remove all-zero rows in H, and the corresponding elements in x
 Delta=ceil(sqrt(room_dim(1)^2+room_dim(2)^2)*fs_RIR/340);
-xL_delayed = [zeros(Delta,1);xL(Delta+1:(Lg+Lh-1),1)];
-xR_delayed = [zeros(Delta,1);xR(Delta+1:(Lg+Lh-1),1)];
+xL_delayed = [zeros(Delta,1);xL(Delta+1:400,1)];
+xR_delayed = [zeros(Delta,1);xR(Delta+1:400,1)];
 
 H = [HL;HR];
 x = [xL_delayed;xR_delayed];
