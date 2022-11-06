@@ -7,7 +7,7 @@
 % complete
 
 
-function [X,f] = WOLA_analysis_skeleton(x,fs,window,nfft,noverlap)
+function [X,f] = WOLA_analysis_skeleton(x,fs,window,nfft,noverlap,g)
 %WOLA_analysis  short-time fourier transform
 % INPUT:
 %   x           : input time signal(s) (samples x channels)
@@ -15,6 +15,7 @@ function [X,f] = WOLA_analysis_skeleton(x,fs,window,nfft,noverlap)
 %   window      : window function
 %   nfft        : FFT size
 %   noverlap    : frame overlap; default: 2 (50%)
+%   g           : filter(a vector with size (Lg*M)*1)
 %
 % OUTPUT:
 %   X           : STFT matrix (bins x frames x channels)
@@ -29,18 +30,21 @@ f = 0:(fs / 2) / (N_half - 1):fs / 2;
 
 % init
 L = floor((length(x) - nfft + (nfft / noverlap)) / (nfft / noverlap));
-M = size(x,2);
+M = size(x,2); % number of speakers
 X = zeros(N_half, L, M);
+Lg = numel(g)/M;
 
 for m = 0:M-1
-    G = fft(g,nfft);% ???
+    
+    G = fft(g(m*Lg+1:(m+1)*Lg),nfft);
+
     for l = 0:L-1 % Frame index
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Section of code to complete (3 - 5 lines) %
         x_segment = x((l*nfft/noverlap)+1:(l*nfft/noverlap)+nfft,m+1).*window;
         X_fft = fft(x_segment,nfft);
-        % add filtering with G
+        % Add filtering with G
         X_filtered = X_fft.*G;
 
         X(:,l+1,m+1)=X_filtered(1:N_half);

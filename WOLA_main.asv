@@ -1,6 +1,8 @@
 clear 
 close all
 
+%% Load filter from SOE
+load SOE_output.mat
 %% read audio
 fs_new = 8000;
 mic_length = 10;
@@ -13,18 +15,27 @@ speech1      = speech1(1:L);
 noverlap = 2;
 nfft = 2048;
 win_analysis  = sqrt(hann(nfft,'periodic'));
-win_synthesis = sqrt(hamming(nfft,'periodic'));
+win_synthesis = sqrt(hann(nfft,'periodic'));
 x = speech1;
-[X,f] = WOLA_analysis_skeleton(x,fs_new,win_analysis,nfft,noverlap);
+x = repmat(x,1,5);
+
+[X,f] = WOLA_analysis_skeleton(x,fs_new,win_analysis,nfft,noverlap,g);
+
+X_pow = abs(X).^2; % *2 to consider 2-sided power
+X_pow_2sided = X_pow;
+X_pow_2sided(2:end,:,:) = X_pow(2:end,:,:)*2;
+X_pow_2sided_dB = 10*log10(X_pow_2sided);
+X_pow_2sided_dB(X_pow_2sided_dB <= 10^(-10)) = 0;
 
 [freq_bins, time_bins] = meshgrid(1:size(X,2),f);
-figure,mesh(freq_bins,time_bins,abs(X).^2)
+figure,mesh(freq_bins,time_bins,X_pow_2sided_dB)
 grid("off")
 colormap jet
 xlabel('Time window')
 ylabel('Frequency (Hz)')
 title('Output of WOLA analysis')
-
+cb = colorbar;
+cb.Title.String = "Power (dB)";
 
 %% Synthesis
 x_synth = WOLA_synthesis_skeleton(X,win_synthesis,nfft,noverlap);
