@@ -34,23 +34,39 @@ M = size(x,2); % number of speakers
 X = zeros(N_half, L, M);
 Lg = numel(g)/M;
 
-for m = 0:M-1
+if isempty(g)
+    for m = 0:M-1
+        for l = 0:L-1 % Frame index
     
-    G = fft(g(m*Lg+1:(m+1)*Lg),nfft);
-
-    for l = 0:L-1 % Frame index
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Section of code to complete (3 - 5 lines) %
-        x_segment = x((l*nfft/noverlap)+1:(l*nfft/noverlap)+nfft,m+1).*window;
-        X_fft = fft(x_segment,nfft);
-        % Add filtering with G
-        X_filtered = X_fft.*G;
-
-        X(:,l+1,m+1)=X_filtered(1:N_half);
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Section of code to complete (3 - 5 lines) %
+            x_segment = x((l*nfft/noverlap)+1:(l*nfft/noverlap)+nfft,m+1).*window;
+            X_fft = fft(x_segment,nfft);
+            
+            X(:,l+1,m+1)=X_fft(1:N_half);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+        end
     end
-end
 
+else 
+    for m = 0:M-1
+        
+        G = fft(g(m*Lg+1:(m+1)*Lg),nfft);
+    
+        for l = 0:L-1 % Frame index
+    
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Section of code to complete (3 - 5 lines) %
+            x_segment = x((l*nfft/noverlap)+1:(l*nfft/noverlap)+nfft,m+1).*window;
+            X_fft = fft(x_segment,nfft);
+            % Add filtering with 
+            X_filtered = X_fft.*G;
+
+            X(:,l+1,m+1)=X_filtered(1:N_half);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+        end
+    end
+end 
 end

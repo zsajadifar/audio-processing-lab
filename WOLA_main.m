@@ -4,6 +4,7 @@ close all
 %% Load filter from SOE and RIR
 load SOE_output.mat
 load Computed_RIRs.mat
+
 %% read audio
 fs_new = 8000;
 mic_length = 10;
@@ -21,7 +22,9 @@ x = speech1;
 J=5; % number of speakers
 x = repmat(x,1,J);
 
+tic
 [X,f] = WOLA_analysis_skeleton(x,fs_new,win_analysis,nfft,noverlap,g);
+t_WOLA_analysis = toc;
 
 X_pow = abs(X).^2; 
 X_pow_sum = sum(X_pow,3); % add outputs of all speakers
@@ -38,16 +41,18 @@ xlabel('Time window')
 ylabel('Frequency (Hz)')
 title('Output of WOLA analysis')
 cb = colorbar;
-cb.Title.String = "Power (dB)";
+cb.Title.String = "Power [dB]";
 
 %% Synthesis
+tic
 x_synth = WOLA_synthesis_skeleton(X,win_synthesis,nfft,noverlap);
+t_WOLA_synthesis = toc;
 
 figure,
-plot(x_synth,'b')
+plot(x_synth,'r')
 hold on
-plot(x,'r')
-legend('x synth','x');
+plot(x,'b')
+legend('xsynth','x');
 
 synth_error=norm(x_synth-x(1:size(x_synth,1),:));
 disp('compare original speech signal and reconstructed one by WOLA_synthesis:')
@@ -72,10 +77,12 @@ end
 
 Lh=400; 
 
+tic
 for j=1:J
     x_left(:,j)=OLA_skeleton(x_synth(:,j),RIR_sources(1:Lh,1,j),nfft);
     x_right(:,j)=OLA_skeleton(x_synth(:,j),RIR_sources(1:Lh,2,j),nfft);
 end
+t_OLA = toc;
 
 x_left_sum = sum(x_left,2);
 x_right_sum = sum(x_right,2);
@@ -83,3 +90,25 @@ x_right_sum = sum(x_right,2);
 x_synth_binaural = [x_left_sum,x_right_sum];
 
 soundsc(x_synth_binaural,fs_new)
+
+t_total_freq = t_OLA + t_WOLA_synthesis + t_WOLA_analysis;
+
+% %% Time domain filtering
+% g_reshaped = reshape(g,[],5);
+% x_left=[];
+% x_right=[];
+% 
+% tic
+% for j=1:J
+%     x_g_filtered = conv(x(:,j),g_reshaped(:,j));
+%     x_left(:,j)= conv(x_g_filtered,RIR_sources(1:Lh,1,j));
+%     x_right(:,j)=conv(x_g_filtered,RIR_sources(1:Lh,2,j));
+% end
+% t_total_time = toc
+% 
+% x_left_sum = sum(x_left,2);
+% x_right_sum = sum(x_right,2);
+% 
+% x_synth_binaural = [x_left_sum,x_right_sum];
+% 
+% soundsc(x_synth_binaural,fs_new)

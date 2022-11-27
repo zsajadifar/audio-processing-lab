@@ -8,7 +8,7 @@
 %
 
 clear;
-% close all
+close all
 
 % Load ATFs
 load Computed_RIRs
@@ -23,7 +23,7 @@ siglength = 10;
 source_filename{1} = 'speech1.wav';
 
 % Noise flag for the noise perturbing SOE
-noiseFlag = 0;
+noiseFlag = 1;
 % Noise flag for sweetspot tests
 sweetspotFlag = 0;
 

@@ -17,7 +17,7 @@ v=[v_pos ones(size(v_pos,1),1)*2];
 if rev_time==0
     refl=0;
 else
-    refl=max(0,1-0.161*L(1)*L(2)*L(3)/(rev_time*(L(1)*L(2)*2+L(1)*L(3)*2+L(3)*L(2)*2))); %Sabine's formula
+    refl=max(0,1-0.161*L(1)*L(2)*L(3)/(rev_time*(L(1)*L(2)*2+L(1)*L(3)*2+L(3)*L(2)*2))) %Sabine's formula
     if refl>0.92
         refl=0.92
         rev_time=0.161*L(1)*L(2)*L(3)/((1-refl)*(L(1)*L(2)*2+L(1)*L(3)*2+L(3)*L(2)*2));
@@ -90,6 +90,6 @@ else
     RIR_noise=[];
 end
 disp(['RIRs are ready for use in variable RIR, note that the RIRs are sampled at ' num2str(fs_RIR) ' Hz'])
-%save('Computed_RIRs','RIR_sources','RIR_noise','fs_RIR','m_pos','s_pos','v_pos','room_dim','rev_time')
+save('Computed_RIRs','RIR_sources','RIR_noise','fs_RIR','m_pos','s_pos','v_pos','room_dim','rev_time')
 end
 
