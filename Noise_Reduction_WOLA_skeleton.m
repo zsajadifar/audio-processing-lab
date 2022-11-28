@@ -110,16 +110,18 @@ babble_noise      = babble_noise(1:L);
 babble_noise_mic_L = fftfilt(RIR_noise(:,1),babble_noise);
 babble_noise_mic_R = fftfilt(RIR_noise(:,2),babble_noise);
 
-SNR_babbel = 10*log10(var(speech_L)/var(2.3*babble_noise_mic_L));
-binaural_babble_noise = 2.3*[babble_noise_mic_L,babble_noise_mic_R];
+SNR_babbel = 5;
+scale = var(speech_L) / ((10.^(SNR_babbel/10)).*var(babble_noise_mic_L));
+binaural_babble_noise = sqrt(scale)*[babble_noise_mic_L,babble_noise_mic_R];
 
 %uncorrelated noise
 uncorr_noise = randn(L,1);
 uncorr_noise_mic_L = fftfilt(RIR_noise(:,1),uncorr_noise);
 uncorr_noise_mic_R = fftfilt(RIR_noise(:,2),uncorr_noise);
 
-SNR_uncorr = 10*log10(var(speech_L)/var(0.0045*uncorr_noise_mic_L));
-binaural_uncorr_noise = 0.0045*[uncorr_noise_mic_L,uncorr_noise_mic_R];
+SNR_uncorr = 30;
+scale = var(speech_L) / ((10.^(SNR_uncorr/10)).*var(uncorr_noise_mic_L));
+binaural_uncorr_noise = sqrt(scale)*[uncorr_noise_mic_L,uncorr_noise_mic_R];
 
 % combine speech signal with 2 noises
 noise = binaural_uncorr_noise + binaural_babble_noise;
@@ -213,7 +215,6 @@ set(gca,'Fontsize',14), xlabel('Time Frames'), ylabel('Frequency (Hz)'), title('
 
 %%  Exercise 3.2: ## Implementation of the MWF
 num_mics = 2;
-
 Rnn = cell(N_freqs,1);  Rnn(:) = {1e-6*ones(num_mics,num_mics)};      % Noise Only (NO) corr. matrix. Initialize to small random values
 Ryy = cell(N_freqs,1);  Ryy(:) = {1e-6*ones(num_mics,num_mics)};      % Speech + Noise (SPN) corr. matrix. Initialize to small random values
 lambda = 0.995;                                                       % Forgetting factors for correlation matrices - can change
@@ -225,6 +226,11 @@ X_mvdr_mwfL_stft = zeros(N_freqs,N_frames);
 N_mvdr_mwfL_stft = zeros(N_freqs,N_frames);  
 W_mvdr_mwfL = (1/num_mics)*ones(num_mics,N_freqs); 
 
+% For MWF filter for right ear
+S_mvdr_mwfR_stft = zeros(N_freqs,N_frames);         
+X_mvdr_mwfR_stft = zeros(N_freqs,N_frames);         
+N_mvdr_mwfR_stft = zeros(N_freqs,N_frames);  
+W_mvdr_mwfR = (1/num_mics)*ones(num_mics,N_freqs); 
 
 % STFT Processing
 % Looping through each time frame and each frequency bin
@@ -273,13 +279,17 @@ for l=2:N_frames % Time index
 
        
         W_mvdr_mwfL(:,k) = F(:,1); % Final expression for filter
-        
+        W_mvdr_mwfR(:,k) = F(:,2);
+
         % Filtering the noisy speech, the speech-only, and the noise-only.
         S_mvdr_mwfL_stft(k,l) = W_mvdr_mwfL(:,k)'* Y_kl(1:num_mics);
         X_mvdr_mwfL_stft(k,l) = W_mvdr_mwfL(:,k)'* X_kl(1:num_mics);
         N_mvdr_mwfL_stft(k,l) = W_mvdr_mwfL(:,k)'* N_kl(1:num_mics);
         
-
+        S_mvdr_mwfR_stft(k,l) = W_mvdr_mwfR(:,k)'* Y_kl(1:num_mics);
+        X_mvdr_mwfR_stft(k,l) = W_mvdr_mwfR(:,k)'* X_kl(1:num_mics);
+        N_mvdr_mwfR_stft(k,l) = W_mvdr_mwfR(:,k)'* N_kl(1:num_mics);
+        
         
     end % end freqs
 end % end time frames
@@ -294,9 +304,13 @@ figure; imagesc(1:N_frames,f/1000,mag2db(abs(S_mvdr_mwfL_stft(:,:,1))), [clow, c
 
 %% Apply the synthesis stage of the WOLA framework to obtain the time domain equivalents:
 
-s_mwfL = WOLA_synthesis_skeleton(S_mvdr_mwfL_stft,window,nfft,noverlap); %To complete (time-domain version of S_mvdr_mwfL_stft)
+s_mwfL = WOLA_synthesis_skeleton(S_mvdr_mwfL_stft,window,nfft,noverlap); % To complete (time-domain version of S_mvdr_mwfL_stft)
 x_mwfL = WOLA_synthesis_skeleton(X_mvdr_mwfL_stft,window,nfft,noverlap); % To complete (time-domain version of X_mvdr_mwfL_stft) 
 n_mwfL = WOLA_synthesis_skeleton(N_mvdr_mwfL_stft,window,nfft,noverlap); % To complete (time-domain version of N_mvdr_mwfL_stft)
+
+s_mwfR = WOLA_synthesis_skeleton(S_mvdr_mwfR_stft,window,nfft,noverlap); % To complete (time-domain version of S_mvdr_mwfL_stft)
+x_mwfR = WOLA_synthesis_skeleton(X_mvdr_mwfR_stft,window,nfft,noverlap); % To complete (time-domain version of X_mvdr_mwfL_stft) 
+n_mwfR = WOLA_synthesis_skeleton(N_mvdr_mwfR_stft,window,nfft,noverlap); % To complete (time-domain version of N_mvdr_mwfL_stft)
 
 % PLOT SIGNALS
 % LISTEN TO SIGNALS!
@@ -305,12 +319,124 @@ plot(s_mwfL,'r')
 plot(x_mwfL,'g')
 plot(n_mwfL,'b')
 legend('s','x','n')
+% soundsc(s_mwfL,fs)
+% soundsc(x_mwfL,fs)
+% soundsc(n_mwfL,fs)
 
+figure, hold on
+plot(s_mwfR,'r')
+plot(x_mwfR,'g')
+plot(n_mwfR,'b')
+legend('s','x','n')
+% soundsc(s_mwfR,fs)
+% soundsc(x_mwfR,fs)
+% soundsc(n_mwfR,fs)
 
 
 %% EVALUATION
 
-% SNR_in = % Compute input SNR
-% SNR_out = % Compute output SNR
+SNR_in  = snr(speech(:,1),noise(:,1));% Compute input SNR
+SNR_out = snr(s_mwfL,n_mwfL);% Compute output SNR
 
 
+%% single channel, MWF function
+[S_mvdr_mwf_stft,X_mvdr_mwf_stft,N_mvdr_mwf_stft]= single_channel_MWF(num_mics,y_STFT,x_STFT,n_STFT);
+
+
+s_mwfL = WOLA_synthesis_skeleton(S_mvdr_mwf_stft(:,:,1),window,nfft,noverlap); % To complete (time-domain version of S_mvdr_mwfL_stft)
+x_mwfL = WOLA_synthesis_skeleton(X_mvdr_mwf_stft(:,:,1),window,nfft,noverlap); % To complete (time-domain version of X_mvdr_mwfL_stft) 
+n_mwfL = WOLA_synthesis_skeleton(N_mvdr_mwf_stft(:,:,1),window,nfft,noverlap); % To complete (time-domain version of N_mvdr_mwfL_stft)
+
+s_mwfR = WOLA_synthesis_skeleton(S_mvdr_mwf_stft(:,:,2),window,nfft,noverlap); % To complete (time-domain version of S_mvdr_mwfL_stft)
+x_mwfR = WOLA_synthesis_skeleton(X_mvdr_mwf_stft(:,:,2),window,nfft,noverlap); % To complete (time-domain version of X_mvdr_mwfL_stft) 
+n_mwfR = WOLA_synthesis_skeleton(N_mvdr_mwf_stft(:,:,2),window,nfft,noverlap); % To complete (time-domain version of N_mvdr_mwfL_stft)
+
+% PLOT SIGNALS
+% LISTEN TO SIGNALS!
+figure, hold on
+plot(s_mwfL,'r')
+plot(x_mwfL,'g')
+plot(n_mwfL,'b')
+legend('s','x','n')
+% soundsc(s_mwfL,fs)
+% soundsc(x_mwfL,fs)
+% soundsc(n_mwfL,fs)
+
+figure, hold on
+plot(s_mwfR,'r')
+plot(x_mwfR,'g')
+plot(n_mwfR,'b')
+legend('s','x','n')
+% soundsc(s_mwfR,fs)
+% soundsc(x_mwfR,fs)
+% soundsc(n_mwfR,fs)
+
+
+function [S_mvdr_mwf_stft,X_mvdr_mwf_stft,N_mvdr_mwf_stft]= single_channel_MWF(SPP_y_TD,y_STFT,x_STFT,n_STFT)
+
+[N_freqs, N_frames, num_mics] = size(y_STFT(:,:,:));
+num_channel = 1; 
+Rnn = cell(N_freqs,1);  Rnn(:) = {1e-6*ones(num_channel,num_channel)};      % Noise Only (NO) corr. matrix. Initialize to small random values
+Ryy = cell(N_freqs,1);  Ryy(:) = {1e-6*ones(num_channel,num_channel)};      % Speech + Noise (SPN) corr. matrix. Initialize to small random values
+lambda = 0.995;                                                       % Forgetting factors for correlation matrices - can change
+SPP_thr = 0.95;                                                       % Threshold for SPP - can change
+
+S_mvdr_mwf_stft = zeros(N_freqs,N_frames,num_mics);         
+X_mvdr_mwf_stft = zeros(N_freqs,N_frames,num_mics);         
+N_mvdr_mwf_stft = zeros(N_freqs,N_frames,num_mics);  
+W_mvdr_mwf = (1/num_channel)*ones(num_channel,N_freqs); 
+
+for ch=1:num_mics
+    for l=2:N_frames % Time index
+        
+        for k = 1:N_freqs % Freq index
+           
+            % Create a vector of mic. signals
+            Y_kl = squeeze(y_STFT(k,l,ch));  % M x 1 noisy mic sigs for this freq and time frame
+            X_kl = squeeze(x_STFT(k,l,ch));
+            N_kl = squeeze(n_STFT(k,l,ch));
+    
+            % ## Update the correlation matrices using the forgetting factor.
+            % Threshold the SPP in order to distinguish between periods of speech and non-speech activity
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Section of code to complete (3 lines) %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % chapter 4, slide 32
+            if SPP_y_TD > SPP_thr
+                Ryy{k} = ((lambda.^2) * Ryy{k}) + (1-lambda.^2)*(Y_kl*Y_kl');
+            else
+                Rnn{k} = ((lambda.^2) * Rnn{k}) + (1-lambda.^2)*(N_kl*N_kl');
+            end
+            
+            % Computing the MWF filter using a generalised eigenvalue
+            % decomposition of the correlation matrices.
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Section of code to complete ~ 10 lines %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % chapter 4, slide 36,37
+            [V,D] = eig(Ryy{k},Rnn{k});
+            [B,I] = sort(diag(D),'descend');
+            Q_inv_H = V(:,I);% V = Q^(-H)
+            %Q_H = inv(Q_inv_H);
+           
+            sigma_SPN_NO = B(1);
+            B(1) = 1-(1/sigma_SPN_NO);
+            B(2:end)=0;
+    
+            F = (Q_inv_H * diag(B))/Q_inv_H; %Q_inv_H * diag([(1-(1/sigma_SPN_NO)),0])*Q_H
+           
+            W_mvdr_mwf(:,k) = F(:,1); % Final expression for filter
+    
+            % Filtering the noisy speech, the speech-only, and the noise-only.
+            S_mvdr_mwf_stft(k,l,ch) = W_mvdr_mwf(:,k)'* Y_kl;
+            X_mvdr_mwf_stft(k,l,ch) = W_mvdr_mwf(:,k)'* X_kl;
+            N_mvdr_mwf_stft(k,l,ch) = W_mvdr_mwf(:,k)'* N_kl;
+       
+            
+        end % end freqs
+    end % end time frames
+end
+
+end
